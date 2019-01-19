@@ -1,45 +1,23 @@
-FROM microsoft/dotnet-framework:4.7.1
+# Based on the MSDN blog: http://bit.ly/docker-vs2017
+
+# 3.7.2 does not work due to bpo-35699. https://bugs.python.org/issue35699
+FROM python:3.7.1-windowsservercore-1709
 
 SHELL ["powershell.exe", "-NoLogo", "-ExecutionPolicy", "Bypass", "-Command"]
 
 CMD ["powershell.exe", "-NoLogo", "-ExecutionPolicy", "Bypass"]
 
-ENV PYTHON_VERSION 3.7.1
+ENV VS_VERSION 15
+ENV VS_INSTALLER_NAME "vs_buildtools.exe"
 
-ENV PYTHON_INSTALLER_NAME "python-${PYTHON_VERSION}-amd64.exe"
-ENV PYTHON_INSTALLER_PRE "https://www.python.org/ftp/python/${PYTHON_VERSION}"
+# Install Visual Studio Build Tools.
 
-ADD "${PYTHON_INSTALLER_PRE}/${PYTHON_INSTALLER_NAME}" .
-
-RUN $ErrorActionPreference = 'Stop' \
-  ; $ProgressPreference = 'SilentlyContinue' \
-  ; $VerbosePreference = 'Continue' \
-  ; $p = Start-Process -Wait -PassThru \
-    -FilePath $Env:PYTHON_INSTALLER_NAME \
-    -ArgumentList @( \
-    '/quiet', \
-    'InstallAllUsers=1', \
-    'TargetDir=C:\\Python', \
-    'PrependPath=1', \
-    'Shortcuts=0', \
-    'Include_doc=0', \
-    'Include_pip=0', \
-    'Include_test=0') \
-  ; $Env:PATH = [Environment]::GetEnvironmentVariable(\
-    'PATH', [EnvironmentVariableTarget]::Machine) \
-  ; Remove-Item $Env:PYTHON_INSTALLER_NAME \
-  ;
-
-# ADD 'https://bootstrap.pypa.io/get-pip.py' get-pip.py
-# RUN python get-pip.py --disable-pip-version-check --no-cache-dir \
-#   ; Remove-Item get-pip.py
-
-ADD 'https://aka.ms/vs/15/release/vs_buildtools.exe' .
+ADD "https://aka.ms/vs/${VS_VERSION}/release/${VS_INSTALLER_NAME}" .
 
 RUN $ErrorActionPreference = 'Stop' \
   ; $VerbosePreference = 'Continue' \
   ; $p = Start-Process -Wait -PassThru \
-    -FilePath vs_buildtools.exe \
+    -FilePath $Env:VS_INSTALLER_NAME \
     -ArgumentList @( \
     '--add', 'microsoft.visualstudio.component.vc.corebuildtools', \
     '--add', 'microsoft.visualstudio.component.vc.tools.x86.x64', \
@@ -47,4 +25,5 @@ RUN $ErrorActionPreference = 'Stop' \
     '--quiet', '--nocache', '--wait', \
     '--installPath', 'C:\\BuildTools') \
   ; if ($ret = $p.ExitCode) { throw ('Install failed with 0x{0:x}' -f $ret) }
-RUN Remove-Item vs_buildtools.exe 
+
+RUN Remove-Item $Env:VS_INSTALLER_NAME
